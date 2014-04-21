@@ -1,0 +1,18 @@
+{
+  "name": "mfbars",
+  "version": "0.0.0",
+  "description": "An opinionated integration of messageformat.js and handlebars.js",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm test"
+  },
+  "keywords": [
+    "messageformat",
+    "messageformat.js",
+    "icu",
+    "handlebars",
+    "i18n"
+  ],
+  "author": "Alex Sexton <alexsexton@gmail.com>",
+  "license": "Apache 2"
+}
