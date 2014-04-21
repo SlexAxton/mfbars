@@ -58,7 +58,7 @@ var testTmpl = "This {{#mfblock \"testkey\" dataname}}is{{/mfblock}} a test. {{s
 var testTmplAST = Handlebars.parse(testTmpl);
 
 var condition = function(node) {
-  return node.type == 'block' && node.mustache.id.original == 'mfblock';
+  return node.type == 'block' && node.mustache.id.original == helper_name;
 };
 var transform = function(node) {
   console.log('Found:', "'" + node.program.statements[0].string + "'");
