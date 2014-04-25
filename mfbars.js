@@ -1,8 +1,11 @@
 var Handlebars = require('handlebars');
+var MessageFormat = require('messageformat');
+var mf = new MessageFormat();
 
-var helper_name = 'mfblock';
+var HELPER_NAME = 'mfblock';
+var HELPER_PREFIX = '_mf_';
 
-function walk(node, condition, transform) {
+function walk(node, condition, transform, out) {
   // Make sure we have a valid node
   if (node && node.type) {
     // Make sure we can handle the type
@@ -10,35 +13,34 @@ function walk(node, condition, transform) {
       throw new Error(node.type + ' is not a recognized type.');
     }
 
-    return node_types[node.type](node, condition, transform);
+    return node_types[node.type](node, condition, transform, out);
   }
   else {
-    console.log(node);
     throw new Error('Node is invalid because it has no type.');
   }
 }
 
 var node_types = {
 
-  program: function(node, condition, transform) {
+  program: function(node, condition, transform, out) {
     return node.statements.map(function(node) {
-      return walk(node, condition, transform);
+      return walk(node, condition, transform, out);
     });
   },
 
-  block: function(node, condition, transform) {
+  block: function(node, condition, transform, out) {
     if (condition(node)) {
-      node = transform(node);
+      return walk(transform(node, out), condition, transform, out);
     }
 
     // Due to the nature of trees, multiple returns
     // is sometimes necessary
     var res = [
-      walk(node.program, condition, transform)
+      walk(node.program, condition, transform, out)
     ];
 
     if (node.inverse) {
-      res.push(walk(node.inverse, condition, transform));
+      res.push(walk(node.inverse, condition, transform, out));
     }
 
     return res;
@@ -54,15 +56,73 @@ var node_types = {
   mustache: function() {}
 };
 
-var testTmpl = "This {{#mfblock \"testkey\" dataname}}is{{/mfblock}} a test. {{somehelper .}}";
-var testTmplAST = Handlebars.parse(testTmpl);
+function condition(node) {
+  return node.type == 'block' && node.mustache.id.original == HELPER_NAME;
+}
 
-var condition = function(node) {
-  return node.type == 'block' && node.mustache.id.original == helper_name;
-};
-var transform = function(node) {
-  console.log('Found:', "'" + node.program.statements[0].string + "'");
+// Since we don't always have a parent to actively switch out a node in the AST,
+// instead we stripe it of all it's properties and merge on the new nodes properties.
+function clean(node) {
+  for(var i in node) {
+    if (node.hasOwnProperty(i)) {
+      delete node[i];
+    }
+  }
   return node;
 }
 
-walk(testTmplAST, condition, transform);
+function generateMustache(key, attrs) {
+  return Handlebars
+    .parse('{{' + HELPER_PREFIX + key + ' ' + attrs.join(' ') + '}}')
+    .statements[0];
+}
+
+function extend(obj1, obj2) {
+  for(var i in obj2) {
+    if (obj2.hasOwnProperty(i)) {
+      obj1[i] = obj2[i];
+    }
+  }
+}
+
+function transform(node, out) {
+  // Grab the key out of the block
+  var key = node.mustache.params[0].original;
+  // Generate the replacement node
+  var newNode = generateMustache(key, [node.mustache.params[1].original]);
+
+  var mfAST = mf.parse(node.program.statements[0].string);
+  var preFunc = "Handlebars.registerHelper('" +
+    HELPER_PREFIX + key +
+  "', " +
+  mf.precompile(mfAST) +
+  ");";
+
+  out.push(preFunc);
+
+  // Delete all things off of the old node
+  node = clean(node);
+  // Switch out the inherited item
+  node.__proto__ = newNode.__proto__;
+  // put all the props from the new node onto
+  // the old one
+  extend(node, newNode);
+
+  return node;
+}
+
+var testTmpl = "This {{#mfblock \"testkey\" .}}You have {num_friends, plural, one{one friend} other{# friends} }.{{/mfblock}} a test.";
+var testTmplAST = Handlebars.parse(testTmpl);
+
+var out = [];
+walk(testTmplAST, condition, transform, out);
+
+console.log(
+  '(function(){\n' +
+  '/* Register necessary helpers */\n' +
+  out.join('\n') +
+  '\n\n/* Return the compiled template */\n' +
+  'return Handlebars.template(' +
+  Handlebars.precompile(testTmplAST) +
+  ');\n})();'
+);
