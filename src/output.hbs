@@ -1,0 +1,12 @@
+(function(){
+  var p = function(){return "not yet implemented";};
+  /* Register necessary helpers */
+  {{#each mf_funcs}}
+  {{{.}}}
+  {{/each}}
+
+  /* Return the compiled template */
+  return Handlebars.template({{{template}}});
+})();
+
+<a></a>

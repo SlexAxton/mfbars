@@ -1,9 +1,14 @@
+var fs = require('fs');
+
 var Handlebars = require('handlebars');
 var MessageFormat = require('messageformat');
 var mf = new MessageFormat();
 
 var HELPER_NAME = 'mfblock';
 var HELPER_PREFIX = '_mf_';
+
+var helper_template = Handlebars.compile(fs.readFileSync('./src/mf_helper.hbs', 'utf8'));
+var output_template = Handlebars.compile(fs.readFileSync('./src/output.hbs', 'utf8'));
 
 function walk(node, condition, transform, out) {
   // Make sure we have a valid node
@@ -92,11 +97,13 @@ function transform(node, out) {
   var newNode = generateMustache(key, [node.mustache.params[1].original]);
 
   var mfAST = mf.parse(node.program.statements[0].string);
-  var preFunc = "Handlebars.registerHelper('" +
-    HELPER_PREFIX + key +
-  "', " +
-  mf.precompile(mfAST) +
-  ");";
+
+  // Render the helper output
+  var preFunc = helper_template({
+    HELPER_PREFIX: HELPER_PREFIX,
+    key: key,
+    mf_func: mf.precompile(mfAST)
+  });
 
   out.push(preFunc);
 
@@ -117,12 +124,10 @@ var testTmplAST = Handlebars.parse(testTmpl);
 var out = [];
 walk(testTmplAST, condition, transform, out);
 
-console.log(
-  '(function(){\n' +
-  '/* Register necessary helpers */\n' +
-  out.join('\n') +
-  '\n\n/* Return the compiled template */\n' +
-  'return Handlebars.template(' +
-  Handlebars.precompile(testTmplAST) +
-  ');\n})();'
-);
+var output = output_template({
+  mf_funcs: out,
+  template: Handlebars.precompile(testTmplAST)
+});
+
+var func = new Function('Handlebars', 'return ' + output)(Handlebars);
+console.log(func({num_friends: 5}));
