@@ -15,8 +15,7 @@ working with translators.
 ## How to use it
 
 ```javascript
-var mfbars = require('mfbars');
-var Handlebars = mfbars(require('handlebars'));
+var Handlebars = require('mfbars')(require('handlebars'));
 
 // Then just use Handlebars as you normally would.
 ```
