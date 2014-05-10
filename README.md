@@ -1,8 +1,9 @@
 # mfbars
 
-This library modifies the Handlebars parser in order to allow you to write messages in your native
-language into your handlebars templates, but then still switch them out for other languages and
-compile them into fast/small functions as messageformat.js does outside of handlebars.
+This library modifies the Handlebars parser and precompiler in order to allow you to write messages
+in your native language into your handlebars templates, but then still switch them out for other
+languages and compile them into fast/small functions as messageformat.js does outside of
+handlebars.
 
 This allows your templates to still contain the valuable context of your native language, but also
 allow the app to optimally compile into a minimal runtime.
@@ -10,6 +11,15 @@ allow the app to optimally compile into a minimal runtime.
 There are additional features that help with providing additional context for translators. The
 format that's used here is custom as there is not a real standard, but does come from experience
 working with translators.
+
+## How to use it
+
+```javascript
+var mfbars = require('mfbars');
+var Handlebars = mfbars(require('handlebars'));
+
+// Then just use Handlebars as you normally would.
+```
 
 ## What it looks like
 
